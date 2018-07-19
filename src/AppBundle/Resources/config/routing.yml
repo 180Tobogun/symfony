@@ -1,0 +1,15 @@
+homepage:
+    path:  /
+    defaults: { _controller: AppBundle:Default:index }
+
+jira_auth_check_path:
+    path:  /check_path
+    defaults: { _controller: AppBundle:Authentication:checkAuthentication }
+
+jira_auth_logout:
+    path:  /logout
+    defaults: { _controller: AppBundle:Authentication:logout }
+
+jira_auth_login_path:
+    path:  /login
+    defaults: { _controller: AppBundle:Authentication:login }

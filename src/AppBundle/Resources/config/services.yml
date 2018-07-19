@@ -1,0 +1,18 @@
+services:
+
+    jira_auth.user_provider:
+        class: AppBundle\Repository\UserProvider
+        arguments: ['@fos_user.user_manager']
+        public: false
+
+    jira_auth.user_api_provider:
+        class: AppBundle\Repository\JiraUserProvider
+        public: false
+
+    AppBundle\Repository\JiraUserProviderInterface: '@jira_auth.user_api_provider'
+
+    jira_auth.authentication_listener:
+        class: AppBundle\Security\Firewall\JiraListener
+        arguments: ['@security.token_storage', '@security.authentication.manager', '@jira_auth.user_api_provider']
+        public: false
+

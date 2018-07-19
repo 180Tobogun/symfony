@@ -1,0 +1,43 @@
+# To get started with security, check out the documentation:
+# https://symfony.com/doc/current/security.html
+security:
+    encoders:
+        FOS\UserBundle\Model\UserInterface: bcrypt
+
+    role_hierarchy:
+        ROLE_USER: ROLE_USER
+        ROLE_MANAGER: ROLE_MANAGER
+        ROLE_SUPER_ADMIN: ROLE_ADMIN
+
+    # https://symfony.com/doc/current/security.html#b-configuring-how-users-are-loaded
+    providers:
+        jira_auth_provider:
+            id: jira_auth.user_provider
+
+    firewalls:
+        # disables authentication for assets and the profiler, adapt it according to your needs
+        dev:
+            pattern: ^/(_(profiler|wdt)|css|images|js)/
+            security: false
+
+        main:
+            provider:               jira_auth_provider
+            switch_user:            false
+            pattern: ^/
+            form_login:
+                check_path:         jira_auth_check_path
+                login_path:         jira_auth_login_path
+                default_target_path: homepage
+            logout:
+                path:               jira_auth_logout
+                target:               homepage
+            logout:       true
+            anonymous:    true
+            jira: true
+
+    access_control:
+        - { path: ^/login$, role: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: ^/register, role: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: ^/resetting, role: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: ^/admin/, role: [ROLE_ADMIN, ROLE_MANAGER] }
+        - { path: ^/, role: ROLE_USER }
