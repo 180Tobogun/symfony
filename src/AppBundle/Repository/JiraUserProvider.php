@@ -2,26 +2,39 @@
 
 namespace AppBundle\Repository;
 
-use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Psr7\Request;
+use Symfony\Component\Security\Core\Exception\UsernameNotFoundException;
 
-class JiraUserProvider implements JiraUserProviderInterface {
+class JiraUserProvider implements JiraUserProviderInterface
+{
 
 
-    public function registerUser( $username, $password): bool
+    public function loadUser($username, $password): ?JiraUser
     {
         $url = 'http://localhost:8080/rest/api/2/user?username=' . $username;
-        $curl = curl_init();
-        curl_setopt($curl, CURLOPT_USERPWD, "$username:$password");
-        curl_setopt($curl, CURLOPT_URL, $url);
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($curl, CURLOPT_FOLLOWLOCATION, 1);
-        curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, 0);
-        curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 0);
-        var_dump($curl);exit;
-        $user_type_list = (curl_exec($curl));
-        $userTypeArr = json_decode($user_type_list);
+        $request = new Request('GET', $url);
+        $request = $request->withHeader('Authorization', 'Basic ' . base64_encode($username . ':' . $password));
+        $request = $request->withHeader('Content-Type', 'application/json');
 
-        echo $userTypeArr->name ;
+
+        try {
+            $client = new Client();
+            $response = $client->send($request, ['timeout' => 1]);
+            if (200 === $response->getStatusCode()){
+                $data = \json_decode((string)$response->getBody(), true);
+
+                return new JiraUser($username, $data['emailAddress']);
+            }
+            return null;
+        } catch (ConnectException $exception) {
+
+            return null;
+        } catch (\Throwable $exception) {
+            throw new UsernameNotFoundException();
+        }
+
     }
 
 }

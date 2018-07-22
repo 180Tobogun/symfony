@@ -10,10 +10,10 @@ class AppBundle extends Bundle
 {
     public function build(ContainerBuilder $container)
     {
-        $extension = $container->getExtension('security');
-        $extension->addSecurityListenerFactory(new JiraFactory());
         parent::build($container);
 
+        $extension = $container->getExtension('security');
+        $extension->addSecurityListenerFactory(new JiraFactory());
 
     }
 }

@@ -8,69 +8,55 @@
 
 namespace AppBundle\Security\Firewall;
 
-
-use AppBundle\Repository\JiraUserProvider;
 use AppBundle\Repository\JiraUserProviderInterface;
-use AppBundle\Security\Authentication\Token\JiraUserToken;
-use Symfony\Component\BrowserKit\Response;
-use Symfony\Component\HttpFoundation\RedirectResponse;
+use FOS\UserBundle\Model\UserManagerInterface;
 use Symfony\Component\HttpKernel\Event\GetResponseEvent;
-use Symfony\Component\Security\Core\Authentication\AuthenticationManagerInterface;
-use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
-use Symfony\Component\Security\Core\Exception\AuthenticationException;
+use Symfony\Component\Security\Core\Exception\UsernameNotFoundException;
+use Symfony\Component\Security\Core\User\UserProviderInterface;
 use Symfony\Component\Security\Http\Firewall\ListenerInterface;
 
 class JiraListener implements ListenerInterface
 {
-    protected $tokenStorage;
-    protected $authenticationManager;
-    protected $jiraUserProvider;
 
-    public function __construct(TokenStorageInterface $tokenStorage, AuthenticationManagerInterface $authenticationManager, JiraUserProviderInterface $jiraUserProvider)
+    protected $jiraUserProvider;
+    protected $userProvider;
+    protected $userManager;
+
+    public function __construct(JiraUserProviderInterface $jiraUserProvider, UserProviderInterface $userProvider, UserManagerInterface $userManager)
     {
-        $this->tokenStorage = $tokenStorage;
-        $this->authenticationManager = $authenticationManager;
         $this->jiraUserProvider = $jiraUserProvider;
+        $this->userProvider = $userProvider;
+        $this->userManager = $userManager;
     }
 
     public function handle(GetResponseEvent $event)
     {
         $request = $event->getRequest();
 
+        $username = $request->request->get('_username');
+        $password = $request->request->get('_password');
 
-        $token = new JiraUserToken();
-        $token->setUser($request->request->get('_username'));
-
-//        $token->digest = $matches['digest'];
-//        $token->nonce = $matches['nonce'];
-//        $token->created = $matches['created'];
-
-        try {
-            $jiraUser = $this->jiraUserProvider->registerUser($request->request->get('_username'), $request->request->get('_password'));
-var_dump($jiraUser);
-            $authToken = $this->authenticationManager->authenticate($token);
-            $this->tokenStorage->setToken($authToken);
-
+        if (null === $username || null === $password) {
             return;
-//            return new RedirectResponse('/');
-        } catch (AuthenticationException $failed) {
-            // ... you might log something here
-
-            // To deny the authentication clear the token. This will redirect to the login page.
-            // Make sure to only clear your token, not those of other authentication listeners.
-            // $token = $this->tokenStorage->getToken();
-            // if ($token instanceof WsseUserToken && $this->providerKey === $token->getProviderKey()) {
-            //     $this->tokenStorage->setToken(null);
-            // }
-            // return;
         }
 
-        var_dump(1);exit;
+        $jiraUser = $this->jiraUserProvider->loadUser($username, $password);
 
-        // By default deny authorization
-        $response = new Response();
-        $response->setStatusCode(Response::HTTP_FORBIDDEN);
-        $event->setResponse($response);
+        try {
+            if (null !== $jiraUser) {
+                $this->userProvider->loadUserByUsername($username);
+
+                //todo: password change and other fields
+            }
+        } catch (UsernameNotFoundException $exception) {
+            $user = $this->userManager->createUser();
+            $user->setUsername($username);
+            $user->setEmail($jiraUser->getEmail());
+            $user->setPlainPassword($request->request->get('_password'));
+            $user->setEnabled(true);
+
+            $this->userManager->updateUser($user);
+        }
     }
 
 }
